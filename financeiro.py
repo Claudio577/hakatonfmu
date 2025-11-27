@@ -58,3 +58,27 @@ def salvar_transacoes_extraidas(lista_transacoes):
             descricao=f"{t['data']} - {t['descricao']}",
             valor=t['valor']
         )
+# ---------------------------------------------------------
+# Categorização automática de transações
+# ---------------------------------------------------------
+
+def categorizar_transacao(descricao):
+    desc = descricao.lower()
+
+    categorias = {
+        "mercado": ["supermercado", "mercado", "carrefour", "extra", "assai"],
+        "transporte": ["uber", "99", "ônibus", "metro", "combustível"],
+        "restaurante": ["mc", "mcdonalds", "bk", "burguer", "restaurante", "lanche"],
+        "lazer": ["cinema", "shopping", "netflix", "spotify"],
+        "saúde": ["farmácia", "drogasil", "drogaria"],
+        "salário": ["salário", "pagamento", "holerite"],
+        "pix": ["pix"],
+        "boleto": ["boleto", "pagamento"],
+    }
+
+    for categoria, termos in categorias.items():
+        for termo in termos:
+            if termo in desc:
+                return categoria
+
+    return "outros"
