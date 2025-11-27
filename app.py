@@ -25,6 +25,16 @@ init_db()
 st.set_page_config(page_title="Hub Financeiro Inteligente", layout="wide")
 st.title("💸 Hub Financeiro Inteligente — PDFs + RAG + Simulação")
 
+# -----------------------------------------------------
+# ADICIONAR SALDO DE TESTE
+# -----------------------------------------------------
+if st.sidebar.button("💰 Adicionar saldo de teste (+ R$ 2.000)"):
+    from json_db import load_db, save_db
+    db = load_db()
+    db["saldo"] += 2000
+    save_db(db)
+    st.sidebar.success("Saldo de teste adicionado!")
+    st.rerun()
 
 # -----------------------------------------------------
 # ESTADO GLOBAL
