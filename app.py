@@ -1,4 +1,5 @@
 import streamlit as st
+import tempfile
 
 # Banco JSON
 from json_db import init_db, load_db
@@ -13,6 +14,9 @@ from services.pix import enviar_pix
 from services.pagamentos import pagar_boleto
 from services.recargas import fazer_recarga
 from services.emprestimos import contratar_emprestimo
+
+# PDF Loader
+from langchain_community.document_loaders import PyPDFLoader
 
 # Inicializar banco
 init_db()
@@ -99,6 +103,7 @@ if menu == "Dashboard":
     for t in reversed(transacoes[-10:]):
         st.write(f"- **{t['tipo']}** — {t['descricao']} — R$ {t['valor']} — categoria: {t['categoria']}")
 
+
 # -----------------------------------------------------
 # UPLOAD DE PDF
 # -----------------------------------------------------
@@ -115,31 +120,30 @@ elif menu == "Enviar PDF":
         with st.spinner("Lendo e indexando PDFs..."):
             st.session_state.vectorstore = load_and_index_pdfs(st.session_state.pdf_bytes)
 
-        # Extrair texto do RAG (corpo completo)
-        st.success("PDFs carregados!")
+        st.success("PDFs carregados com sucesso!")
 
         st.subheader("🔍 Extraindo transações dos PDFs...")
 
-        # Processa as transações
-       import tempfile
-from langchain_community.document_loaders import PyPDFLoader
+        # Processa os PDFs corretamente
+        for u in uploaded:
 
-for u in uploaded:
-    # Criar arquivo temporário para extrair TEXTO do PDF
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-        tmp.write(u.getvalue())
-        tmp.flush()
+            # Criar arquivo temporário para extrair o texto
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+                tmp.write(u.getvalue())
+                tmp.flush()
 
-        loader = PyPDFLoader(tmp.name)
-        paginas = loader.load()
+                # Ler PDF
+                loader = PyPDFLoader(tmp.name)
+                paginas = loader.load()
 
-        # Concatenar texto de todas as páginas
-        texto = "\n".join([p.page_content for p in paginas])
+                # Juntar conteúdo
+                texto = "\n".join([p.page_content for p in paginas])
 
-        # Extrair transações
-        trans = extrair_transacoes_do_texto(texto)
-        salvar_transacoes_extraidas(trans)
+                # Extrair transações do texto
+                trans = extrair_transacoes_do_texto(texto)
 
+                # Salvar no banco
+                salvar_transacoes_extraidas(trans)
 
         st.success("Transações adicionadas ao banco!")
 
