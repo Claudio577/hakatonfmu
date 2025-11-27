@@ -26,4 +26,3 @@ def load_and_index_pdfs(pdf_bytes_list):
     vectorstore = FAISS.from_documents(documentos, embeddings)
 
     return vectorstore
-
