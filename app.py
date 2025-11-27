@@ -110,17 +110,21 @@ elif menu == "Enviar PDF":
     uploaded = st.file_uploader("Envie PDFs", type=["pdf"], accept_multiple_files=True)
 
     if uploaded:
+        import tempfile
+        from langchain_community.document_loaders import PyPDFLoader
+
+        # Armazena PDFs (usado no RAG)
         st.session_state.pdf_bytes = [u.getvalue() for u in uploaded]
 
+        # Indexar PDFs para RAG
         with st.spinner("Lendo e indexando PDFs..."):
             st.session_state.vectorstore = load_and_index_pdfs(st.session_state.pdf_bytes)
 
         st.success("PDFs carregados com sucesso!")
-
         st.subheader("🔍 Extraindo transações dos PDFs...")
 
+        # Extração REAL das transações
         for u in uploaded:
-            # Criar arquivo temporário
             with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
                 tmp.write(u.getvalue())
                 tmp.flush()
@@ -128,13 +132,19 @@ elif menu == "Enviar PDF":
                 loader = PyPDFLoader(tmp.name)
                 paginas = loader.load()
 
-                # Texto concatenado do PDF
+                # juntar texto
                 texto = "\n".join([p.page_content for p in paginas])
 
-                # Extrair transações
+                # DEBUG: Mostra o texto extraído
+                st.write("📄 Texto extraído:", texto[:1000])
+
+                # extrair transações
                 trans = extrair_transacoes_do_texto(texto)
 
-                # Salvar no banco JSON
+                # DEBUG: Mostra as transações detectadas
+                st.write("🔍 Transações encontradas:", trans)
+
+                # salvar no banco JSON
                 salvar_transacoes_extraidas(trans)
 
         st.success("Transações adicionadas ao banco!")
