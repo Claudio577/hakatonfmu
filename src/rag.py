@@ -1,54 +1,39 @@
 from json_db import load_db
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_community.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
 import os
 
-# Carrega a chave da OpenAI do Streamlit Secrets / Variáveis de ambiente
+# pega API Key do Secrets
 openai_api_key = os.getenv("OPENAI_API_KEY")
 
-# Inicializa o LLM da OpenAI
+# inicializa LLM
 llm = ChatOpenAI(
-    model="gpt-4o-mini",      # leve e rápido, ideal para Streamlit
+    model="gpt-4o",
     temperature=0.2,
-    api_key=openai_api_key    # adiciona a chave corretamente
+    api_key=openai_api_key
 )
 
 def process_query(pergunta, vectorstore):
 
-    # Recuperação de contexto dos PDFs
     docs = vectorstore.similarity_search(pergunta, k=4)
     contexto_pdf = "\n\n".join([d.page_content for d in docs])
 
-    # Carrega dados reais do usuário (JSON)
     db = load_db()
     saldo = db["saldo"]
     transacoes = db["transacoes"]
 
-    # Prompt inteligente — consultor financeiro
     prompt = ChatPromptTemplate.from_template("""
-    Você é um CONSULTOR FINANCEIRO inteligente.
-
-    Use:
-    - TRANSACOES reais do usuário (banco JSON)
-    - SALDO real
-    - CONTEXTO extraído dos PDFs (opcional)
-    - Sua própria interpretação da pergunta
-
-    Responda sempre de forma clara, direta e profissional.
-    Se a pergunta for sobre saldo, diga o saldo.
-    Se for sobre gastos, analise as transações.
-    Se for sobre categorias, explique.
-    Se não souber, use o contexto do PDF.
+    Você é um consultor financeiro inteligente...
 
     --- DADOS DO USUÁRIO ---
-    Saldo atual: R$ {saldo}
-    Transações recentes: {transacoes}
+    Saldo: R$ {saldo}
+    Transações: {transacoes}
 
     --- CONTEXTO DO PDF ---
     {contexto_pdf}
 
-    Pergunta do usuário:
-    "{pergunta}"
+    Pergunta:
+    {pergunta}
 
     Resposta:
     """)
