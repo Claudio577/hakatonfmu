@@ -8,6 +8,7 @@ from json_db import init_db, load_db
 from src.pdf_loader import load_and_index_pdfs
 from src.rag import process_query
 from financeiro import extrair_transacoes_do_texto, salvar_transacoes_extraidas
+from langchain_community.document_loaders import PyPDFLoader
 
 # Serviços financeiros
 from services.pix import enviar_pix
@@ -15,15 +16,15 @@ from services.pagamentos import pagar_boleto
 from services.recargas import fazer_recarga
 from services.emprestimos import contratar_emprestimo
 
-# PDF Loader
-from langchain_community.document_loaders import PyPDFLoader
 
-# Inicializar banco
+# -----------------------------------------------------
+# Inicializar banco ao iniciar o app
+# -----------------------------------------------------
 init_db()
 
 st.set_page_config(page_title="Hub Financeiro Inteligente", layout="wide")
-
 st.title("💸 Hub Financeiro Inteligente — PDFs + RAG + Simulação")
+
 
 # -----------------------------------------------------
 # ESTADO GLOBAL
@@ -36,12 +37,13 @@ if "pdf_bytes" not in st.session_state:
 
 
 # -----------------------------------------------------
-# SIDEBAR (Menu)
+# MENU LATERAL
 # -----------------------------------------------------
 menu = st.sidebar.radio(
     "Menu",
     ["Dashboard", "Enviar PDF", "Fazer Pergunta (RAG)", "PIX", "Pagamentos", "Recargas", "Empréstimos"]
 )
+
 
 # -----------------------------------------------------
 # DASHBOARD
@@ -51,9 +53,6 @@ if menu == "Dashboard":
 
     data = load_db()
 
-    # --------------------------
-    # Saldo
-    # --------------------------
     st.metric("Saldo atual", f"R$ {data['saldo']:.2f}")
 
     transacoes = data["transacoes"]
@@ -64,10 +63,10 @@ if menu == "Dashboard":
     # Gráfico por categoria
     # --------------------------
     st.subheader("🏷 Gastos por categoria")
-
     categorias = {}
+
     for t in transacoes:
-        if t["valor"] < 0:  # só despesas
+        if t["valor"] < 0:
             categoria = t.get("categoria", "outros")
             categorias[categoria] = categorias.get(categoria, 0) + abs(t["valor"])
 
@@ -82,12 +81,10 @@ if menu == "Dashboard":
     # Maiores gastos
     # --------------------------
     st.subheader("💸 Maiores gastos")
-
     despesas = [t for t in transacoes if t["valor"] < 0]
 
     if despesas:
         maiores = sorted(despesas, key=lambda x: x["valor"])[:5]
-
         for t in maiores:
             st.write(f"**{t['descricao']}** — R$ {abs(t['valor'])} — categoria: {t['categoria']}")
     else:
@@ -105,7 +102,7 @@ if menu == "Dashboard":
 
 
 # -----------------------------------------------------
-# UPLOAD DE PDF
+# ENVIAR PDF
 # -----------------------------------------------------
 elif menu == "Enviar PDF":
     st.header("📁 Enviar PDFs de extratos, faturas ou comprovantes")
@@ -113,10 +110,8 @@ elif menu == "Enviar PDF":
     uploaded = st.file_uploader("Envie PDFs", type=["pdf"], accept_multiple_files=True)
 
     if uploaded:
-        # Armazena PDFs
         st.session_state.pdf_bytes = [u.getvalue() for u in uploaded]
 
-        # Indexar PDFs para RAG
         with st.spinner("Lendo e indexando PDFs..."):
             st.session_state.vectorstore = load_and_index_pdfs(st.session_state.pdf_bytes)
 
@@ -124,25 +119,22 @@ elif menu == "Enviar PDF":
 
         st.subheader("🔍 Extraindo transações dos PDFs...")
 
-        # Processa os PDFs corretamente
         for u in uploaded:
-
-            # Criar arquivo temporário para extrair o texto
+            # Criar arquivo temporário
             with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
                 tmp.write(u.getvalue())
                 tmp.flush()
 
-                # Ler PDF
                 loader = PyPDFLoader(tmp.name)
                 paginas = loader.load()
 
-                # Juntar conteúdo
+                # Texto concatenado do PDF
                 texto = "\n".join([p.page_content for p in paginas])
 
-                # Extrair transações do texto
+                # Extrair transações
                 trans = extrair_transacoes_do_texto(texto)
 
-                # Salvar no banco
+                # Salvar no banco JSON
                 salvar_transacoes_extraidas(trans)
 
         st.success("Transações adicionadas ao banco!")
@@ -164,7 +156,7 @@ elif menu == "Fazer Pergunta (RAG)":
             st.markdown("### Resposta")
             st.write(resposta)
 
-            st.markdown("### Fontes")
+            st.markdown("### Fontes utilizadas")
             for f in fontes:
                 st.write(f["texto"])
 
