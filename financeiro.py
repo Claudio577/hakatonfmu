@@ -1,5 +1,4 @@
 import re
-from json_db import add_transaction
 
 # ---------------------------------------------------------
 # Função para identificar linhas financeiras em textos
