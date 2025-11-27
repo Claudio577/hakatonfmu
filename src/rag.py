@@ -1,11 +1,16 @@
 from json_db import load_db
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
+from langchain_community.chat_models import ChatOpenAI
+import os
+
+# Carrega a chave da OpenAI do Streamlit Secrets / Variáveis de ambiente
+openai_api_key = os.getenv("OPENAI_API_KEY")
 
 # Inicializa o LLM da OpenAI
 llm = ChatOpenAI(
-    model="gpt-4o-mini",  # leve e rápido, ideal para Streamlit
-    temperature=0.2
+    model="gpt-4o-mini",      # leve e rápido, ideal para Streamlit
+    temperature=0.2,
+    api_key=openai_api_key    # adiciona a chave corretamente
 )
 
 def process_query(pergunta, vectorstore):
