@@ -5,38 +5,37 @@ from json_db import add_transaction
 # Categorização automática
 # ---------------------------------------------------------
 
-
 def extrair_transacoes_do_texto(texto):
     """
-    Extrai transações reais dos PDFs (Pix, compras, serviços etc.)
-    Ignora totais e textos quebrados.
-    Compatível com o formato colado dos seus PDFs.
+    Extrai transações mesmo quando o PDF vem sem espaços.
+    Detecta padrões como:
+    01/11MercadinhoCentralR45,90
+    11/11UberViagemR16,90
     """
 
-    # Remove múltiplos espaços e deixa tudo mais limpo
-    texto = texto.replace("\n", " ")
-    texto = re.sub(r"\s{2,}", " ", texto)
+    # 1️⃣ Garante que exista separação entre palavras e números grudados
+    texto = re.sub(r"([a-zA-Z])(\d{1,2}/\d{1,2})", r"\1 \2", texto)
+    texto = re.sub(r"(\d{1,2}/\d{1,2})([A-Z])", r"\1 \2", texto)
+    texto = re.sub(r"([A-Za-z])(\d)", r"\1 \2", texto)
 
-    # PADRÃO PRINCIPAL (data + descrição + valor colado sem espaço)
-    padrao1 = r"(\d{1,2}/\d{1,2})([A-Za-zÀ-ÿ0-9 ]+?)R\s?([\d.,]+)"
+    # 2️⃣ Regex robusta: detecta linhas com DATA + DESCRIÇÃO + VALOR
+    padrao = r"(\d{1,2}/\d{1,2})\s+([A-Za-zÀ-ÿ ]+?)\s*R?\s?([\d,.]+)"
 
-    # PADRÃO SECUNDÁRIO (valor sem data, tipo "SupermercadoExtraR220,50")
-    padrao2 = r"([A-Za-zÀ-ÿ ]+?)R\s?([\d.,]+)"
+    matches = re.findall(padrao, texto)
 
-    resultados = []
+    resultado = []
 
-    # ---------------  
-    # CAPTURA PADRÃO 1  
-    # ---------------
-    for data, descricao, valor in re.findall(padrao1, texto):
-        valor = float(valor.replace(".", "").replace(",", "."))
-        if "TOTAL" in descricao.upper():  
-            continue  # ignora totais
-        resultados.append({
+    for data, descricao, valor in matches:
+        valor = float(valor.replace(",", "."))
+        valor = -valor  # é despesa
+        resultado.append({
             "data": data,
             "descricao": descricao.strip(),
-            "valor": -valor  # despesa padrão
+            "valor": valor
         })
+
+    return resultado
+
 
     # ---------------  
     # CAPTURA PADRÃO 2  
