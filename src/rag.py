@@ -1,8 +1,52 @@
-def process_query(query, vectorstore):
-    docs = vectorstore.similarity_search(query, k=3)
+from json_db import load_db
+from langchain_core.prompts import ChatPromptTemplate
 
-    resposta = "\n".join([d.page_content for d in docs])
+def process_query(pergunta, vectorstore):
 
-    fontes = [{"texto": d.page_content} for d in docs]
+    # Recuperação de contexto dos PDFs
+    docs = vectorstore.similarity_search(pergunta, k=4)
+    contexto_pdf = "\n\n".join([d.page_content for d in docs])
 
-    return resposta, fontes
+    # Carrega dados reais do usuário (JSON)
+    db = load_db()
+    saldo = db["saldo"]
+    transacoes = db["transacoes"]
+
+    # Prompt inteligente — consultor financeiro
+    prompt = ChatPromptTemplate.from_template("""
+    Você é um CONSULTOR FINANCEIRO inteligente.
+
+    Use:
+    - TRANSACOES reais do usuário (banco JSON)
+    - SALDO real
+    - CONTEXTO extraído dos PDFs (opcional)
+    - Sua própria interpretação da pergunta
+
+    Responda sempre de forma clara, direta e profissional.
+    Se a pergunta for sobre saldo, diga o saldo.
+    Se for sobre gastos, analise as transações.
+    Se for sobre categorias, explique.
+    Se não souber, use o contexto do PDF.
+
+    --- DADOS DO USUÁRIO ---
+    Saldo atual: R$ {saldo}
+    Transações recentes: {transacoes}
+
+    --- CONTEXTO DO PDF ---
+    {contexto_pdf}
+
+    Pergunta do usuário:
+    "{pergunta}"
+
+    Resposta:
+    """)
+
+    chain = prompt | llm
+    resposta = chain.invoke({
+        "pergunta": pergunta,
+        "saldo": saldo,
+        "transacoes": transacoes,
+        "contexto_pdf": contexto_pdf
+    })
+
+    return resposta, docs
