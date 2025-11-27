@@ -1,4 +1,3 @@
-
 import json
 import os
 
@@ -33,15 +32,11 @@ def save_db(data):
         json.dump(data, f, indent=4)
 
 # ---------------------------------------------------------
-# Funções auxiliares
+# Transações (SEM imports circulares)
 # ---------------------------------------------------------
-from financeiro import categorizar_transacao
-
-def add_transaction(tipo, descricao, valor):
+def add_transaction(tipo, descricao, valor, categoria="outros"):
     """Adiciona transação ao banco e atualiza saldo."""
-
-    categoria = categorizar_transacao(descricao)
-
+    
     data = load_db()
 
     nova_transacao = {
@@ -52,7 +47,7 @@ def add_transaction(tipo, descricao, valor):
     }
 
     data["transacoes"].append(nova_transacao)
-    data["saldo"] += valor  # valor positivo = entrada, negativo = saída
+    data["saldo"] += valor  # positivo → entrada, negativo → saída
 
     save_db(data)
     return nova_transacao
