@@ -1,6 +1,9 @@
-streamlit
 langchain
+langchain-core
 langchain-community
-faiss-cpu
-sentence-transformers
+langchain-openai
+openai
+chromadb
+tiktoken
 pypdf
+streamlit
