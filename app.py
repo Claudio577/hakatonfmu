@@ -43,17 +43,61 @@ menu = st.sidebar.radio(
 # DASHBOARD
 # -----------------------------------------------------
 if menu == "Dashboard":
-    st.header("📊 Dashboard Financeiro")
+    st.header("📊 Dashboard Financeiro Inteligente")
 
     data = load_db()
 
+    # --------------------------
+    # Saldo
+    # --------------------------
     st.metric("Saldo atual", f"R$ {data['saldo']:.2f}")
 
+    transacoes = data["transacoes"]
+
+    st.markdown("---")
+
+    # --------------------------
+    # Gráfico por categoria
+    # --------------------------
+    st.subheader("🏷 Gastos por categoria")
+
+    categorias = {}
+    for t in transacoes:
+        if t["valor"] < 0:  # só despesas
+            categoria = t.get("categoria", "outros")
+            categorias[categoria] = categorias.get(categoria, 0) + abs(t["valor"])
+
+    if categorias:
+        st.bar_chart(categorias)
+    else:
+        st.info("Nenhuma despesa encontrada.")
+
+    st.markdown("---")
+
+    # --------------------------
+    # Maiores gastos
+    # --------------------------
+    st.subheader("💸 Maiores gastos")
+
+    despesas = [t for t in transacoes if t["valor"] < 0]
+
+    if despesas:
+        maiores = sorted(despesas, key=lambda x: x["valor"])[:5]
+
+        for t in maiores:
+            st.write(f"**{t['descricao']}** — R$ {abs(t['valor'])} — categoria: {t['categoria']}")
+    else:
+        st.info("Nenhuma despesa registrada.")
+
+    st.markdown("---")
+
+    # --------------------------
+    # Últimas transações
+    # --------------------------
     st.subheader("📜 Últimas transações")
 
-    for t in reversed(data["transacoes"][-10:]):
-        st.write(f"- **{t['tipo']}** — {t['descricao']} — R$ {t['valor']}")
-
+    for t in reversed(transacoes[-10:]):
+        st.write(f"- **{t['tipo']}** — {t['descricao']} — R$ {t['valor']} — categoria: {t['categoria']}")
 
 # -----------------------------------------------------
 # UPLOAD DE PDF
