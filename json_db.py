@@ -35,14 +35,20 @@ def save_db(data):
 # ---------------------------------------------------------
 # Funções auxiliares
 # ---------------------------------------------------------
+from financeiro import categorizar_transacao
+
 def add_transaction(tipo, descricao, valor):
     """Adiciona transação ao banco e atualiza saldo."""
+
+    categoria = categorizar_transacao(descricao)
+
     data = load_db()
 
     nova_transacao = {
         "tipo": tipo,
         "descricao": descricao,
-        "valor": valor
+        "valor": valor,
+        "categoria": categoria
     }
 
     data["transacoes"].append(nova_transacao)
