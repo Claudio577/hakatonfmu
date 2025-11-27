@@ -1,28 +1,30 @@
-import tempfile
 from langchain_community.document_loaders import PyPDFLoader
-from langchain_community.vectorstores import FAISS
-from langchain_community.embeddings import HuggingFaceEmbeddings
-
+from langchain_community.vectorstores import Chroma
+from langchain_openai import OpenAIEmbeddings
+import tempfile
+import os
 
 def load_and_index_pdfs(pdf_bytes_list):
-    documentos = []
+    texts = []
 
+    # Salva PDFs temporariamente
     for pdf_bytes in pdf_bytes_list:
-        # Criar arquivo temporário para o PDF (necessário para o PyPDFLoader)
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
             tmp.write(pdf_bytes)
             tmp.flush()
-
-            # Ler PDF
             loader = PyPDFLoader(tmp.name)
-            docs = loader.load()
+            pages = loader.load()
+            for p in pages:
+                texts.append(p.page_content)
 
-            documentos.extend(docs)
+    # Embeddings da OpenAI (funciona no Streamlit Cloud)
+    embeddings = OpenAIEmbeddings(
+        model="text-embedding-3-small",
+        api_key=os.getenv("OPENAI_API_KEY")
+    )
 
-    # Embeddings
-    embeddings = HuggingFaceEmbeddings()
-
-    # Banco vetorial
-    vectorstore = FAISS.from_documents(documentos, embeddings)
+    # Indexação no ChromaDB
+    vectorstore = Chroma.from_texts(texts, embeddings)
 
     return vectorstore
+
