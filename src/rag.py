@@ -1,5 +1,12 @@
 from json_db import load_db
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_openai import ChatOpenAI
+
+# Inicializa o LLM da OpenAI
+llm = ChatOpenAI(
+    model="gpt-4o-mini",  # leve e rápido, ideal para Streamlit
+    temperature=0.2
+)
 
 def process_query(pergunta, vectorstore):
 
