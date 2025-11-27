@@ -43,6 +43,14 @@ menu = st.sidebar.radio(
     "Menu",
     ["Dashboard", "Enviar PDF", "Fazer Pergunta (RAG)", "PIX", "Pagamentos", "Recargas", "Empréstimos"]
 )
+# -----------------------------------------------------
+# BOTÃO DE RESET GERAL
+# -----------------------------------------------------
+if st.sidebar.button("🔄 Resetar Sistema (Limpar tudo)"):
+    from json_db import save_db
+    save_db({"saldo": 0.0, "transacoes": []})
+    st.sidebar.success("Sistema resetado com sucesso!")
+    st.rerun()
 
 
 # -----------------------------------------------------
