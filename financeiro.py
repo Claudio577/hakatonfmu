@@ -4,26 +4,56 @@ from json_db import add_transaction
 # ---------------------------------------------------------
 # Categorização automática
 # ---------------------------------------------------------
-def categorizar_transacao(descricao):
-    desc = descricao.lower()
 
-    categorias = {
-        "mercado": ["supermercado", "mercado", "carrefour", "extra", "assai"],
-        "transporte": ["uber", "99", "ônibus", "metro", "combustível"],
-        "restaurante": ["mc", "mcdonalds", "bk", "burguer", "restaurante", "lanche"],
-        "lazer": ["cinema", "shopping", "netflix", "spotify"],
-        "saúde": ["farmácia", "drogasil", "drogaria"],
-        "salário": ["salário", "pagamento", "holerite"],
-        "pix": ["pix"],
-        "boleto": ["boleto", "pagamento"],
-    }
 
-    for categoria, termos in categorias.items():
-        for termo in termos:
-            if termo in desc:
-                return categoria
-    return "outros"
+def extrair_transacoes_do_texto(texto):
+    """
+    Extrai transações reais dos PDFs (Pix, compras, serviços etc.)
+    Ignora totais e textos quebrados.
+    Compatível com o formato colado dos seus PDFs.
+    """
 
+    # Remove múltiplos espaços e deixa tudo mais limpo
+    texto = texto.replace("\n", " ")
+    texto = re.sub(r"\s{2,}", " ", texto)
+
+    # PADRÃO PRINCIPAL (data + descrição + valor colado sem espaço)
+    padrao1 = r"(\d{1,2}/\d{1,2})([A-Za-zÀ-ÿ0-9 ]+?)R\s?([\d.,]+)"
+
+    # PADRÃO SECUNDÁRIO (valor sem data, tipo "SupermercadoExtraR220,50")
+    padrao2 = r"([A-Za-zÀ-ÿ ]+?)R\s?([\d.,]+)"
+
+    resultados = []
+
+    # ---------------  
+    # CAPTURA PADRÃO 1  
+    # ---------------
+    for data, descricao, valor in re.findall(padrao1, texto):
+        valor = float(valor.replace(".", "").replace(",", "."))
+        if "TOTAL" in descricao.upper():  
+            continue  # ignora totais
+        resultados.append({
+            "data": data,
+            "descricao": descricao.strip(),
+            "valor": -valor  # despesa padrão
+        })
+
+    # ---------------  
+    # CAPTURA PADRÃO 2  
+    # (somente se não tiver capturado no padrão 1)  
+    # ---------------
+    for descricao, valor in re.findall(padrao2, texto):
+        if "TOTAL" in descricao.upper():
+            continue
+        if not any(descricao in r["descricao"] for r in resultados):
+            valor = float(valor.replace(".", "").replace(",", "."))
+            resultados.append({
+                "data": "",
+                "descricao": descricao.strip(),
+                "valor": -valor
+            })
+
+    return resultados
 
 # ---------------------------------------------------------
 # Extrair transações do PDF
