@@ -25,6 +25,7 @@ init_db()
 st.set_page_config(page_title="Hub Financeiro Inteligente", layout="wide")
 st.title("💸 Hub Financeiro Inteligente — PDFs + RAG + Simulação")
 
+
 # -----------------------------------------------------
 # ADICIONAR SALDO DE TESTE
 # -----------------------------------------------------
@@ -35,6 +36,7 @@ if st.sidebar.button("💰 Adicionar saldo de teste (+ R$ 2.000)"):
     save_db(db)
     st.sidebar.success("Saldo de teste adicionado!")
     st.rerun()
+
 
 # -----------------------------------------------------
 # ESTADO GLOBAL
@@ -53,6 +55,8 @@ menu = st.sidebar.radio(
     "Menu",
     ["Dashboard", "Enviar PDF", "Fazer Pergunta (RAG)", "PIX", "Pagamentos", "Recargas", "Empréstimos"]
 )
+
+
 # -----------------------------------------------------
 # BOTÃO DE RESET GERAL
 # -----------------------------------------------------
@@ -64,36 +68,119 @@ if st.sidebar.button("🔄 Resetar Sistema (Limpar tudo)"):
 
 
 # -----------------------------------------------------
-# DASHBOARD
+# D A S H B O A R D
 # -----------------------------------------------------
 if menu == "Dashboard":
     st.header("📊 Dashboard Financeiro Inteligente")
 
     data = load_db()
-
-    st.metric("Saldo atual", f"R$ {data['saldo']:.2f}")
-
     transacoes = data["transacoes"]
 
+    st.metric("Saldo atual", f"R$ {data['saldo']:.2f}")
     st.markdown("---")
 
-    # --------------------------
-    # Gráfico por categoria
-    # --------------------------
-    st.subheader("🏷 Gastos por categoria")
-    categorias = {}
 
+    # ======================================================
+    #   DASHBOARD PRO — GASTOS POR CATEGORIA (DINÂMICO)
+    # ======================================================
+
+    st.subheader("📊 Gastos por Categoria (PRO)")
+
+    import plotly.graph_objects as go
+
+    # 1. SOMA DOS GASTOS POR CATEGORIA
+    categoria_totais = {}
     for t in transacoes:
         if t["valor"] < 0:
-            categoria = t.get("categoria", "outros")
-            categorias[categoria] = categorias.get(categoria, 0) + abs(t["valor"])
+            cat = t.get("categoria", "outros")
+            categoria_totais[cat] = categoria_totais.get(cat, 0) + abs(t["valor"])
 
-    if categorias:
-        st.bar_chart(categorias)
+    if categoria_totais:
+
+        categoria_totais = dict(sorted(categoria_totais.items(), key=lambda x: x[1], reverse=True))
+
+        labels = list(categoria_totais.keys())
+        values = list(categoria_totais.values())
+        total = sum(values)
+
+        cores = {
+            "luz": "#f39c12",
+            "água": "#3498db",
+            "educação": "#9b59b6",
+            "internet": "#1abc9c",
+            "saúde": "#e74c3c",
+            "lazer": "#e67e22",
+            "alimentação": "#2ecc71",
+            "supermercado": "#6a5acd",
+            "transporte": "#ff79c6",
+            "pagamentos": "#8be9fd",
+            "pix": "#bd93f9",
+            "outros": "#7f8c8d"
+        }
+
+        lista_cores = [cores.get(cat, "#7f8c8d") for cat in labels]
+
+
+        # 2. DONUT
+        fig = go.Figure(
+            data=[go.Pie(
+                labels=labels,
+                values=values,
+                hole=0.55,
+                marker=dict(colors=lista_cores),
+                textinfo="label+percent",
+                textfont=dict(size=14, color="white")
+            )]
+        )
+
+        fig.update_layout(
+            title="Distribuição dos Gastos",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=-0.25,
+                xanchor="center",
+                x=0.5,
+                font=dict(color="white")
+            )
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+
+        # 3. LISTAGEM DETALHADA
+        st.markdown("### 📌 Detalhamento por Categoria")
+
+        for categoria, valor in categoria_totais.items():
+            percentual = (valor / total) * 100
+            cor = cores.get(categoria, "#7f8c8d")
+
+            st.markdown(f"""
+            <div style='margin-bottom:15px;'>
+                <b style='color:white; font-size:18px;'>{categoria.capitalize()}</b>
+                <span style='color:#bbb;'> — R$ {valor:.2f} ({percentual:.1f}%)</span>
+                <div style='background:{cor}; height:14px; width:{percentual}%; border-radius:8px; margin-top:5px;'></div>
+            </div>
+            """, unsafe_allow_html=True)
+
+
+        # 4. CATEGORIA MAIS CARA
+        maior_categoria = max(categoria_totais, key=categoria_totais.get)
+        st.markdown(f"""
+        <div style='background:#1c1c2e; padding:15px; border-radius:10px; margin-top:20px; color:white;'>
+            💡 Sua categoria mais cara é <b>{maior_categoria.capitalize()}</b>, 
+            com um total de <b>R$ {categoria_totais[maior_categoria]:.2f}</b>.
+        </div>
+        """, unsafe_allow_html=True)
+
     else:
-        st.info("Nenhuma despesa encontrada.")
+        st.info("Nenhuma despesa encontrada para gerar gráficos.")
+
 
     st.markdown("---")
+
 
     # --------------------------
     # Maiores gastos
@@ -109,6 +196,7 @@ if menu == "Dashboard":
         st.info("Nenhuma despesa registrada.")
 
     st.markdown("---")
+
 
     # --------------------------
     # Últimas transações
@@ -128,20 +216,17 @@ elif menu == "Enviar PDF":
     uploaded = st.file_uploader("Envie PDFs", type=["pdf"], accept_multiple_files=True)
 
     if uploaded:
-        import tempfile
         from langchain_community.document_loaders import PyPDFLoader
 
-        # Armazena PDFs (usado no RAG)
         st.session_state.pdf_bytes = [u.getvalue() for u in uploaded]
 
-        # Indexar PDFs para RAG
         with st.spinner("Lendo e indexando PDFs..."):
             st.session_state.vectorstore = load_and_index_pdfs(st.session_state.pdf_bytes)
 
         st.success("PDFs carregados com sucesso!")
         st.subheader("🔍 Extraindo transações dos PDFs...")
 
-        # Extração REAL das transações
+
         for u in uploaded:
             with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
                 tmp.write(u.getvalue())
@@ -150,19 +235,14 @@ elif menu == "Enviar PDF":
                 loader = PyPDFLoader(tmp.name)
                 paginas = loader.load()
 
-                # juntar texto
                 texto = "\n".join([p.page_content for p in paginas])
 
-                # DEBUG: Mostra o texto extraído
                 st.write("📄 Texto extraído:", texto[:1000])
 
-                # extrair transações
                 trans = extrair_transacoes_do_texto(texto)
 
-                # DEBUG: Mostra as transações detectadas
                 st.write("🔍 Transações encontradas:", trans)
 
-                # salvar no banco JSON
                 salvar_transacoes_extraidas(trans)
 
         st.success("Transações adicionadas ao banco!")
