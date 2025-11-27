@@ -2,36 +2,72 @@ import re
 from json_db import add_transaction
 
 # ---------------------------------------------------------
-# Categorização automática simples
+# Categorização automática completa (versão PRO)
 # ---------------------------------------------------------
 
 def categorizar_transacao(desc):
     desc = desc.lower()
-    if "mercado" in desc or "super" in desc:
-        return "supermercado"
-    if "uber" in desc:
-        return "transporte"
-    if "ifood" in desc:
+
+    # Luz / Energia elétrica
+    if any(x in desc for x in ["energia", "eletric", "light", "cemig", "copel", "enel"]):
+        return "luz"
+
+    # Água / Saneamento
+    if any(x in desc for x in ["agua", "água", "sabesp", "sanepar", "casan"]):
+        return "água"
+
+    # Educação
+    if any(x in desc for x in ["escola", "colégio", "colegio", "faculdade", "fmu", "curso"]):
+        return "educação"
+
+    # Internet / Telefonia
+    if any(x in desc for x in ["internet", "vivo", "claro", "tim", "oi", "fibra", "net"]):
+        return "internet"
+
+    # Saúde
+    if any(x in desc for x in ["unimed", "saúde", "saude", "laboratório", "clinica", "hospital"]):
+        return "saúde"
+
+    # Lazer / Entretenimento
+    if any(x in desc for x in ["cinema", "ingresso", "show", "bar", "lazer", "netflix", "spotify", "prime", "hbo"]):
+        return "lazer"
+
+    # Alimentação
+    if any(x in desc for x in ["ifood", "lanche", "lanch", "restaurante", "padaria", "pizza", "hamburg"]):
         return "alimentação"
+
+    # Supermercado
+    if any(x in desc for x in ["mercado", "super", "carrefour", "extra", "dia%"]):
+        return "supermercado"
+
+    # Transporte
+    if any(x in desc for x in ["uber", "99", "taxi", "estacionamento", "metro", "ônibus", "onibus"]):
+        return "transporte"
+
+    # PIX
     if "pix" in desc:
         return "pix"
-    if "boleto" in desc or "pagamento" in desc:
+
+    # Pagamentos / contas gerais
+    if any(x in desc for x in ["boleto", "pagamento", "conta"]):
         return "pagamentos"
+
+    # Categoria fallback
     return "outros"
 
 
 # ---------------------------------------------------------
-# Extrator único (limpo e funcionando)
+# Extrator de transações do PDF
 # ---------------------------------------------------------
+
 def extrair_transacoes_do_texto(texto):
     """
     Extrai transações do PDF detectando:
-    - 01/11 Mercadinho Central R 45,90
+    - 01/11 Mercadinho Central R$ 45,90
     - 02/10 Uber Viagem R$ 18,00
     - Mercadinho Central R$ 45,90
     """
 
-    # limpa quebras estranhas
     texto = texto.replace("R$", "R$ ")
 
     padroes = [
@@ -54,7 +90,7 @@ def extrair_transacoes_do_texto(texto):
                 data = ""
                 descricao, valor = m
 
-            # trata valor
+            # Ajusta valor
             valor = float(valor.replace(".", "").replace(",", "."))
             valor = -abs(valor)  # sempre despesa
 
@@ -70,6 +106,7 @@ def extrair_transacoes_do_texto(texto):
 # ---------------------------------------------------------
 # Salvar transações extraídas no banco
 # ---------------------------------------------------------
+
 def salvar_transacoes_extraidas(lista_transacoes):
     for t in lista_transacoes:
         categoria = categorizar_transacao(t["descricao"])
@@ -80,5 +117,4 @@ def salvar_transacoes_extraidas(lista_transacoes):
             valor=t["valor"],
             categoria=categoria
         )
-
 
