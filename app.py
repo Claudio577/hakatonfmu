@@ -121,10 +121,25 @@ elif menu == "Enviar PDF":
         st.subheader("🔍 Extraindo transações dos PDFs...")
 
         # Processa as transações
-        for u in uploaded:
-            texto = u.getvalue().decode(errors="ignore")
-            trans = extrair_transacoes_do_texto(texto)
-            salvar_transacoes_extraidas(trans)
+       import tempfile
+from langchain_community.document_loaders import PyPDFLoader
+
+for u in uploaded:
+    # Criar arquivo temporário para extrair TEXTO do PDF
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+        tmp.write(u.getvalue())
+        tmp.flush()
+
+        loader = PyPDFLoader(tmp.name)
+        paginas = loader.load()
+
+        # Concatenar texto de todas as páginas
+        texto = "\n".join([p.page_content for p in paginas])
+
+        # Extrair transações
+        trans = extrair_transacoes_do_texto(texto)
+        salvar_transacoes_extraidas(trans)
+
 
         st.success("Transações adicionadas ao banco!")
 
